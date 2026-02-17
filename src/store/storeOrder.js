@@ -1,8 +1,3 @@
-// src/store/orderStore.js
-// Store en mémoire (MVP) : garde les dernières commandes reçues.
-// TRUTH: Sur Vercel/serverless, ce store peut être reset (cold start / scaling).
-// Usage: addOrder(summary), listOrders({limit}), getOrderById(id)
-
 const DEFAULT_MAX = 50;
 const TTL_MS = 30 * 60 * 1000; // 30 min pour le dedupe webhookId
 

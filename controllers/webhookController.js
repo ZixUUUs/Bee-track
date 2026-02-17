@@ -59,7 +59,7 @@ function handleOrderWebhook(req, res) {
   // 2) Traitement après ACK
   setImmediate(() => {
     try {
-      if (isDuplicateWebhook(webhookId)) {
+      if (webhookId && isDuplicateWebhook(webhookId)) {
         console.log("[WEBHOOK] duplicate ignored", {
           webhookId,
           topic,
@@ -67,7 +67,6 @@ function handleOrderWebhook(req, res) {
         });
         return;
       }
-
       const raw = Buffer.isBuffer(req.body)
         ? req.body
         : Buffer.from(String(req.body || ""), "utf8");

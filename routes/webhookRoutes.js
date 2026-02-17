@@ -6,7 +6,7 @@ const verifyShopifyHMAC = require("../middleware/verifyShopifyHMAC");
 const { handleOrderWebhook } = require("../controllers/webhookController");
 
 router.post(
-  "/orders",
+  "/",
   express.raw({ type: "application/json" }),
   verifyShopifyHMAC,
   handleOrderWebhook,
