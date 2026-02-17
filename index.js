@@ -7,7 +7,7 @@ const hookRoute = require("./routes/webhookRoutes");
 const ordersRoute = require("./routes/orderRoutes");
 
 app.use("/webhook", hookRoute);
-app.use("/orders", orders);
+app.use("/orders", ordersRoute);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
