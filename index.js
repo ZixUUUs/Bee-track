@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+require("dotenv").config();
 
 const hookRoute = require("./routes/webhookRoutes");
 const ordersRoute = require("./routes/orderRoutes");
