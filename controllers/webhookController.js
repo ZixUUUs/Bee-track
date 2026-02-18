@@ -1,11 +1,11 @@
-// src/controllers/webhookController.js
-// Objectif MVP: ACK 200 rapide, puis parse + store + logs.
-
 const { isDuplicateWebhook, addOrder } = require("../src/store/storeOrder");
 
 function buildOrderSummary(order, meta = {}) {
   const shipping = order.shipping_address || {};
+  const billing = order.billing_address || {};
   const customer = order.customer || {};
+  const defaultAddr = customer.default_address || {};
+
   const shippingLine = Array.isArray(order.shipping_lines)
     ? order.shipping_lines[0]
     : null;
@@ -34,6 +34,7 @@ function buildOrderSummary(order, meta = {}) {
 
   const customerName =
     shipping.name ||
+    billing.name ||
     [customer.first_name, customer.last_name]
       .filter(Boolean)
       .join(" ")
@@ -41,12 +42,32 @@ function buildOrderSummary(order, meta = {}) {
     order.customer_name ||
     null;
 
-  const phone = shipping.phone || customer.phone || order.phone || null;
+  const phone =
+    shipping.phone ||
+    billing.phone ||
+    customer.phone ||
+    defaultAddr.phone ||
+    order.phone ||
+    null;
 
   const address =
-    [shipping.address1, shipping.address2].filter(Boolean).join(", ") || null;
+    [shipping.address1, shipping.address2].filter(Boolean).join(", ") ||
+    [billing.address1, billing.address2].filter(Boolean).join(", ") ||
+    null;
 
-  const wilaya = shipping.province || shipping.city || null;
+  const city = shipping.city || billing.city || null;
+
+  const wilayaAddress =
+    shipping.province ||
+    billing.province ||
+    shipping.city ||
+    billing.city ||
+    null;
+
+  const wilayaFinal = wilayaFromMethod || wilayaAddress;
+
+  const totalPrice = Number(order.total_price);
+  const deliveryPrice = Number(shippingPrice);
 
   return {
     shopify_order_id: order.id,
@@ -56,10 +77,13 @@ function buildOrderSummary(order, meta = {}) {
     customer_name: customerName,
     phone,
     address,
-    city: shipping.city || null,
-    wilaya,
+    city,
 
-    total_price: order.total_price || null,
+    wilaya_method: wilayaFromMethod,
+    wilaya_address: wilayaAddress,
+    wilaya: wilayaFinal,
+
+    total_price: Number.isFinite(totalPrice) ? totalPrice : null,
     currency: order.currency || null,
     line_items_count: Array.isArray(order.line_items)
       ? order.line_items.length
@@ -72,23 +96,17 @@ function buildOrderSummary(order, meta = {}) {
 
     delivery_method_title: shippingTitle,
     delivery_type: deliveryType,
-    delivery_price: shippingPrice,
-
-    // wilaya final: méthode > adresse
-    wilaya: wilayaFromMethod || wilaya,
+    delivery_price: Number.isFinite(deliveryPrice) ? deliveryPrice : null,
   };
 }
 
 function handleOrderWebhook(req, res) {
-  // Headers utiles Shopify
   const webhookId = req.get("X-Shopify-Webhook-Id");
   const topic = req.get("X-Shopify-Topic");
   const shopDomain = req.get("X-Shopify-Shop-Domain");
 
-  // 1) ACK FAST (HMAC a déjà été vérifié par middleware)
   res.sendStatus(200);
 
-  // 2) Traitement après ACK
   setImmediate(() => {
     try {
       if (webhookId && isDuplicateWebhook(webhookId)) {
@@ -99,9 +117,11 @@ function handleOrderWebhook(req, res) {
         });
         return;
       }
+
       const raw = Buffer.isBuffer(req.body)
         ? req.body
         : Buffer.from(String(req.body || ""), "utf8");
+
       const order = JSON.parse(raw.toString("utf8"));
 
       const summary = buildOrderSummary(order, {
@@ -117,8 +137,10 @@ function handleOrderWebhook(req, res) {
         shopDomain,
         orderId: summary.shopify_order_id,
         orderName: summary.order_name,
-        orderShipping: order.shipping_lines,
-        orderShippingAddress: order.shipping_address,
+        wilaya: summary.wilaya,
+        delivery_type: summary.delivery_type,
+        phone: summary.phone,
+        delivery_price: summary.delivery_price,
       });
     } catch (err) {
       console.error("[WEBHOOK] processing error", {
@@ -131,6 +153,4 @@ function handleOrderWebhook(req, res) {
   });
 }
 
-module.exports = {
-  handleOrderWebhook,
-};
+module.exports = { handleOrderWebhook };
