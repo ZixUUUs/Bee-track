@@ -85,6 +85,8 @@ function handleOrderWebhook(req, res) {
         shopDomain,
         orderId: summary.shopify_order_id,
         orderName: summary.order_name,
+        orderShipping: order.shipping_lines,
+        orderShippingAddress: order.shipping_address,
       });
     } catch (err) {
       console.error("[WEBHOOK] processing error", {
