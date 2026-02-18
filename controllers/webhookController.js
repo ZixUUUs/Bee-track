@@ -6,6 +6,31 @@ const { isDuplicateWebhook, addOrder } = require("../src/store/storeOrder");
 function buildOrderSummary(order, meta = {}) {
   const shipping = order.shipping_address || {};
   const customer = order.customer || {};
+  const shippingLine = Array.isArray(order.shipping_lines)
+    ? order.shipping_lines[0]
+    : null;
+
+  const shippingTitle = shippingLine?.title || null;
+
+  const shippingPrice =
+    shippingLine?.price ??
+    order.total_shipping_price_set?.shop_money?.amount ??
+    null;
+
+  let wilayaFromMethod = null;
+  let deliveryType = null;
+
+  if (shippingTitle) {
+    const m = shippingTitle.match(/^(.+?)\s*\((.+)\)\s*$/);
+    if (m) {
+      wilayaFromMethod = m[1].trim();
+      const inside = m[2].trim().toLowerCase();
+      if (inside.includes("bureau")) deliveryType = "bureau";
+      if (inside.includes("domicile")) deliveryType = "domicile";
+    } else {
+      wilayaFromMethod = shippingTitle.trim();
+    }
+  }
 
   const customerName =
     shipping.name ||
@@ -44,6 +69,13 @@ function buildOrderSummary(order, meta = {}) {
     topic: meta.topic || null,
     shop_domain: meta.shopDomain || null,
     received_at: new Date().toISOString(),
+
+    delivery_method_title: shippingTitle,
+    delivery_type: deliveryType,
+    delivery_price: shippingPrice,
+
+    // wilaya final: méthode > adresse
+    wilaya: wilayaFromMethod || wilaya,
   };
 }
 
