@@ -1,4 +1,5 @@
-const { isDuplicateWebhook, addOrder } = require("../src/store/storeOrder");
+const { insertOrder } = require("../models/orderModel");
+const { markWebhookReceived } = require("../models/webhookEventsModel");
 
 function buildOrderSummary(order, meta = {}) {
   const shipping = order.shipping_address || {};
@@ -107,15 +108,23 @@ function handleOrderWebhook(req, res) {
 
   res.sendStatus(200);
 
-  setImmediate(() => {
+  setImmediate(async () => {
     try {
-      if (webhookId && isDuplicateWebhook(webhookId)) {
-        console.log("[WEBHOOK] duplicate ignored", {
-          webhookId,
+      if (webhookId) {
+        const webhookInserted = await markWebhookReceived({
+          webhook_id: webhookId,
           topic,
-          shopDomain,
+          shop_domain: shopDomain,
         });
-        return;
+
+        if (!webhookInserted) {
+          console.log("[WEBHOOK] duplicate ignored (DB)", {
+            webhookId,
+            topic,
+            shopDomain,
+          });
+          return;
+        }
       }
 
       const raw = Buffer.isBuffer(req.body)
@@ -129,7 +138,8 @@ function handleOrderWebhook(req, res) {
         topic,
         shopDomain,
       });
-      addOrder(summary);
+
+      const { inserted: orderInserted } = await insertOrder(summary);
 
       console.log("[WEBHOOK] stored order", {
         webhookId,
@@ -141,6 +151,7 @@ function handleOrderWebhook(req, res) {
         delivery_type: summary.delivery_type,
         phone: summary.phone,
         delivery_price: summary.delivery_price,
+        orderInserted,
       });
     } catch (err) {
       console.error("[WEBHOOK] processing error", {
