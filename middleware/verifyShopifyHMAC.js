@@ -11,15 +11,6 @@ function safeCompare(a, b) {
 }
 
 function verifyShopifyHMAC(req, res, next) {
-  console.log("[HMAC] content-type:", req.get("content-type"));
-  console.log("[HMAC] header present:", !!req.get("x-shopify-hmac-sha256"));
-  console.log(
-    "[HMAC] isBuffer:",
-    Buffer.isBuffer(req.body),
-    "len:",
-    req.body?.length,
-  );
-
   try {
     const hmacHeader = req.get("X-Shopify-Hmac-Sha256");
     if (!hmacHeader) return res.sendStatus(401);
@@ -42,9 +33,6 @@ function verifyShopifyHMAC(req, res, next) {
       .update(req.body)
       .digest("base64");
 
-    console.log("[HMAC] received:", hmacHeader);
-    console.log("[HMAC] expected:", computed);
-
     if (!safeCompare(computed, hmacHeader)) return res.sendStatus(401);
 
     return next();
@@ -52,7 +40,6 @@ function verifyShopifyHMAC(req, res, next) {
     console.error("[WEBHOOK] HMAC verification error:", err);
     return res.status(401).json({ error: "Missing HMAC header" });
   }
-  console.log("[HMAC] all headers:", req.headers);
 }
 
 module.exports = verifyShopifyHMAC;

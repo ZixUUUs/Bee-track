@@ -14,7 +14,7 @@ async function insertOrder(ORDER) {
     INSERT INTO orders (
       shopify_order_id,
       order_name,
-      created_at,
+      created_at_shopify,
       customer_name,
       phone,
       address,
